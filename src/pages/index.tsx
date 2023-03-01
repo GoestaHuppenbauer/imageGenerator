@@ -49,7 +49,6 @@ export default function Home() {
     outline: '0',
     color: '#fff',
     background: 'transparent',
-    border:'0.033em #fff solid',
    left:
       '50%',
       transform: 'translate(-50%,0)',
