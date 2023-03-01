@@ -5,7 +5,7 @@ services:
     image: im-gen
     build: .
     ports:
-      - "3000:3000"
+      - 3000:3000
     volumes:
       - ./public:/app/public
       - ./src:/app/src
