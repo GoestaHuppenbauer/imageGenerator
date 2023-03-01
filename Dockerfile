@@ -4,4 +4,4 @@ WORKDIR /app
 ADD . . 
 RUN npm install
 RUN npm run build
-CMD ["npm", "run"]
+CMD ["npm", "run","dev"]

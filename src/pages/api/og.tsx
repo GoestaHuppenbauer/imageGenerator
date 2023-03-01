@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { NextRequest } from 'next/server';
 
 export const config = {
-  runtime: 'experimental-edge',
+  runtime: 'edge',
 };
 // ...Vercel Edge functions config object
 
@@ -19,9 +19,6 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
     const fontData = await font;
     
     try {
-      
-    
-          
       // 1: get the searchParams from the request URL
       const { searchParams } = new URL(req.url)
   
@@ -90,8 +87,6 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
                 left:'50px',
                 display: 'flex',
                 flexDirection: 'column',
-               top:'100px',
-               
             }}
             >
             <h1
