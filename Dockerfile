@@ -1,7 +1,7 @@
-FROM node:16
+FROM node:16-alpine
 WORKDIR usr/src/app
 
-COPY . . 
+COPY .. 
 RUN npm install
 RUN npm run build
 CMD ["npm", "run"]
