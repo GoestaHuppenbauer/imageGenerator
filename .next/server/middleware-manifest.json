@@ -1,0 +1,43 @@
+{
+  "sortedMiddleware": [],
+  "middleware": {},
+  "functions": {
+    "/api/og": {
+      "env": [
+        "JEST_WORKER_ID"
+      ],
+      "files": [
+        "server/edge-runtime-webpack.js",
+        "server/pages/api/og.js"
+      ],
+      "name": "pages/api/og",
+      "page": "/api/og",
+      "matchers": [
+        {
+          "regexp": "^/api/og$"
+        }
+      ],
+      "wasm": [
+        {
+          "name": "wasm_a7e702bc5ba9227243abda7977c8096f59478d3f",
+          "filePath": "server/edge-chunks/wasm_a7e702bc5ba9227243abda7977c8096f59478d3f.wasm"
+        },
+        {
+          "name": "wasm_ea9ee43a5ee9b2e1cd270fa43980822c06dc5bf2",
+          "filePath": "server/edge-chunks/wasm_ea9ee43a5ee9b2e1cd270fa43980822c06dc5bf2.wasm"
+        }
+      ],
+      "assets": [
+        {
+          "name": "Anton-Regular.41006b42fd8191e3.ttf",
+          "filePath": "server/edge-chunks/asset_Anton-Regular.41006b42fd8191e3.ttf"
+        },
+        {
+          "name": "noto-sans-v27-latin-regular.5dda3fca77107598.ttf",
+          "filePath": "server/edge-chunks/asset_noto-sans-v27-latin-regular.5dda3fca77107598.ttf"
+        }
+      ]
+    }
+  },
+  "version": 2
+}
