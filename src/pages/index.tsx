@@ -16,7 +16,8 @@ export default function Home() {
 
   const [url,setUrl]  = useState('http://via.placeholder.com/1200x1200');
   const [title,setTitle]  = useState('Filmclub Podcast');
-  const [number,setNumber]  = useState('00')
+  const [number,setNumber]  = useState('00');
+  const [fit,setFit]  = useState('cover');
 
   const fetchImage = async () => {
     const FetchUrl = 'https://api.themoviedb.org/3/search/movie?api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb&query=' + encodeURIComponent(title)
@@ -38,7 +39,7 @@ export default function Home() {
 }
 
   const openInNewTab = (l) => {
-    const newWindow = window.open('/api/og?title='+encodeURIComponent(title)+'&number='+encodeURIComponent(number)+'&url='+encodeURIComponent(l), '_blank', 'noopener,noreferrer')
+    const newWindow = window.open('/api/og?title='+encodeURIComponent(title)+'&number='+encodeURIComponent(number)+'&fit=' + encodeURIComponent(fit)+'&url='+encodeURIComponent(l), '_blank', 'noopener,noreferrer')
     if (newWindow) newWindow.opener = null
   }
   const inputStyle:CSSProperties = {
@@ -66,7 +67,7 @@ export default function Home() {
     setUrl('http://via.placeholder.com/1200x1200')
     if(url=='http://via.placeholder.com/1200x1200'){
       fetchImage().then((d) => { 
-        console.log(url)
+        
          setUrl(d);openInNewTab(d); })
   
     }
@@ -101,6 +102,13 @@ export default function Home() {
      <div  style={{backgroundColor:'#4daf7c',}}> <input style={inputStyle} placeholder="Filmclub Podcast" value={title} type="text" onChange={({target}) => setTitle(target.value)}></input></div>
      <div  style={{backgroundColor:'#404241',...divStyle}}> <input style={inputStyle} placeholder="0" value={number} type="number" onChange={({target}) => setNumber(target.value)}></input></div>
      <div  style={{backgroundColor:'#e9c85d',...divStyle}}> <input style={inputStyle}placeholder="Bild url (optional)" value={url} type="url" onChange={({target}) => setUrl(target.value)}></input></div>
+     <div  style={{backgroundColor:'darkgray',...divStyle}}>
+      <select onChange={({target}) => setFit(target.value)} name="fit" id="cars" form="imageStyle">
+        <option value="cover">Cover</option>
+        <option value="contain">Contain</option>
+        <option value="fill">Fill</option>
+        <option value="none">None</option>
+</select></div>
      <div style={{backgroundColor:'#A30000',...divStyle}}><span
   style={{
     display:'inline-block',

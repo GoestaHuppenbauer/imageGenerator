@@ -26,30 +26,33 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
       const hasTitle = searchParams.has('title')
       const hasNumber = searchParams.has('number')
       const hasUrl = searchParams.has('url')
+      const hasFit = searchParams.has('fit')
       
   
       // 3: If so, take the passed value. If not, assign a default
       const title = hasTitle
-        ? searchParams.get('title')?.slice(0, 100)
+        ? searchParams.get('title')
         : 'Some title'
 
-        
+    
+           
+       
+
+        const imageContentStyle = {
+            objectFit: hasFit
+            ? searchParams.get('fit')
+            :  'cover',
+          } as React.CSSProperties;
         
         const image = hasUrl
         ? searchParams.get('url')
         :  'http://via.placeholder.com/1200x1200'; 
-           
-
-
-        
-     
-        
+          
       const number = hasNumber
-        ? searchParams.get('number')?.slice(0, 100)
+        ? searchParams.get('number')
         : '00'
 
-        
-        
+ 
   return new ImageResponse(
     
     (
@@ -70,14 +73,16 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
         <img
         id='image'
           alt="d"
-          height={1200}
+          
           src={`${image}`}
            style={{
-            filter: 'grayscale(100%) brightness(50%)',
+            filter: 'brightness(50%) grayscale(100%)',
             position: 'absolute',
             display:'flex',
-            objectFit: 'cover',
-            
+            left:'0',
+            width:'1200',
+            height:'1200',
+            ...imageContentStyle
           }}
         />
 
@@ -87,6 +92,7 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
                 left:'50px',
                 display: 'flex',
                 flexDirection: 'column',
+                position:'absolute',
             }}
             >
             <h1
