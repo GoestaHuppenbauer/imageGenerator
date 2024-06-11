@@ -1,6 +1,7 @@
 import { ImageResponse } from '@vercel/og';
 import Link from 'next/link';
 import { NextRequest } from 'next/server';
+import react, { CSSProperties, useState } from "react";
 
 export const config = {
   runtime: 'edge',
@@ -12,13 +13,19 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
   (res) => res.arrayBuffer(),
 );
   
-  
+const urlHostname = url => {
+  try {
+    return new URL(url).hostname;
+  }
+  catch(e) { return e; }
+};
   
   // ...exported function
   export default async function (req: NextRequest) {
     const fontData = await font;
-    
+ 
     try {
+     
       // 1: get the searchParams from the request URL
       const { searchParams } = new URL(req.url)
   
@@ -26,30 +33,82 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
       const hasTitle = searchParams.has('title')
       const hasNumber = searchParams.has('number')
       const hasUrl = searchParams.has('url')
-      
+      const hasFit = searchParams.has('fit')
+      const hasPosition = searchParams.has('position')
+      const hasOrientation = searchParams.has('orientation')
+      const hasTarget = searchParams.has('target')
   
       // 3: If so, take the passed value. If not, assign a default
       const title = hasTitle
-        ? searchParams.get('title')?.slice(0, 100)
+        ? searchParams.get('title')
         : 'Some title'
+        const target = hasTarget
+        ? searchParams.get('target')
+        : 'post'
 
-        
+      const position = hasPosition?
+        searchParams.get('position')
+        : 'left'
+      const orientation = hasOrientation?
+        searchParams.get('orientation')
+        : 'hochkant'
+
+        const positionStyle = position === 'left'? {
+          left:0
+        }
+        : position === 'right'? {
+          right:0
+        }
+        : position === 'top'? {
+          top:0,
+         
+        }:  {
+          bottom:0,
+          
+        } as React.CSSProperties;
+       
+      
+        const imageContentStyle = {
+            objectFit: hasFit
+            ? searchParams.get('fit')
+            :  'cover',
+          } as React.CSSProperties;
         
         const image = hasUrl
         ? searchParams.get('url')
         :  'http://via.placeholder.com/1200x1200'; 
-           
+          
 
-
+ 
+      const styles = {
         
-     
+        postContainerStyle:{},
+        postImageStyle:{},
+        storyContainerStyle:{},
+        storyImageStyle:{},
+      } as React.CSSProperties;
+
+
+
+      const imageSizingStyle = (orientation === 'hochkant')?
+        {
+          width: '1400',
+        
+        }
+      
+      :
+        { 
+         
+          height: '1400',
+        
+      }as React.CSSProperties;
+
         
       const number = hasNumber
-        ? searchParams.get('number')?.slice(0, 100)
+        ? searchParams.get('number')
         : '00'
 
-        
-        
+ 
   return new ImageResponse(
     
     (
@@ -60,7 +119,7 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
           height: '100%',
           display:'flex',
           textAlign: 'center',
-          //alignItems: 'flex-start',
+          // alignItems: 'flex-end',
           //justifyContent: 'flex-start',
           position: 'relative',
           objectFit: 'cover',
@@ -70,14 +129,18 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
         <img
         id='image'
           alt="d"
-          height={1200}
+          
           src={`${image}`}
            style={{
-            filter: 'grayscale(100%) brightness(50%)',
+            filter: 'brightness(50%) grayscale(100%)',
             position: 'absolute',
             display:'flex',
-            objectFit: 'cover',
             
+            // width:'1200',
+            height:target==='post'?'1400':'1920',
+           ...imageSizingStyle,
+            ...positionStyle,
+            ...imageContentStyle
           }}
         />
 
@@ -87,6 +150,7 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
                 left:'50px',
                 display: 'flex',
                 flexDirection: 'column',
+                position:'absolute',
             }}
             >
             <h1
@@ -133,13 +197,25 @@ const font = fetch(new URL('../../assets/Anton-Regular.ttf', import.meta.url)).t
            {number}
         </p>
         </div>
+        <div style={{
+          bottom:'10px',
+          left:'10px',
+          display:'flex',
+          position: 'absolute',
+        }}>
+          <p style={{
+            color:'#F0F0F0',
+            
+          }}>Quelle: {urlHostname(image)}</p>
+          
+        </div>
     </div>
   
       
     ),
     {
-      width: 1200,
-      height: 1200,
+      width: target=== 'post'?1400:1080,
+      height: target=== 'post'?1400:1920,
       fonts: [
         {
           name: 'Anton',
