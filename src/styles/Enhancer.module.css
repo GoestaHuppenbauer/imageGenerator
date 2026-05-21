@@ -246,6 +246,21 @@
   transition: width 0.2s;
 }
 
+.progressFill.indeterminate {
+  width: 35%;
+  border-radius: 999px;
+  animation: indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% {
+    margin-left: -35%;
+  }
+  100% {
+    margin-left: 100%;
+  }
+}
+
 .error {
   margin-top: 14px;
   padding: 10px 14px;
@@ -320,4 +335,41 @@
 
 .footer a {
   color: #4a7dff;
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 18px 10px 48px;
+  }
+
+  .title {
+    font-size: 1.45rem;
+  }
+
+  .subtitle {
+    font-size: 0.92rem;
+  }
+
+  .card {
+    padding: 15px;
+    border-radius: 12px;
+  }
+
+  .dropzone {
+    padding: 32px 14px;
+  }
+
+  .modeToggle {
+    flex-direction: column;
+  }
+
+  .actionRow .button,
+  .actionRow .buttonPrimary {
+    flex: 1;
+    text-align: center;
+  }
+
+  .imageFrame {
+    max-height: 380px;
+  }
 }
