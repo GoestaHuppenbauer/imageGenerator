@@ -1,39 +1,57 @@
+# Skalen & Werte aufwerten
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+Eine Website, die abfotografierte oder gescannte Vorlagen mit Skalen, Werten und
+schwarzen Linien auf weißem Grund aufwertet. Schlecht lesbare Bilder werden
+entzerrt, gesäubert und scharf neu gezeichnet.
 
-## Getting Started
+Die gesamte Bildverarbeitung läuft **clientseitig im Browser** – das hochgeladene
+Bild wird nicht an einen Server gesendet.
 
-First, run the development server:
+## Funktionen
+
+- **Cleanup** – Schräglage korrigieren, entrauschen, sauberes Schwarz/Weiß
+  (adaptiv oder Otsu) und hochskalieren. Die Originalpixel bleiben erhalten,
+  Zahlenwerte werden nicht verändert.
+- **Reconstruct** – Linien per Hough-Transformation erkennen, waagerechte/
+  senkrechte Linien begradigen und das Bild vektorartig neu zeichnen.
+  Text wird per OCR erkannt und scharf neu gesetzt.
+- Vorschau Original/Ergebnis nebeneinander, Download als PNG.
+
+## Technik
+
+- [Next.js](https://nextjs.org/) (Pages Router, TypeScript)
+- [OpenCV.js](https://docs.opencv.org/) für Bildverarbeitung
+- [Tesseract.js](https://tesseract.projectnaptha.com/) für OCR
+
+OpenCV.js und Tesseract.js (inkl. OCR-Sprachdaten) werden zur Laufzeit einmalig
+von einem CDN nachgeladen. Der Browser des Nutzers benötigt dafür eine
+Internetverbindung; die Bilddaten selbst verlassen den Browser nicht.
+
+## Entwicklung
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Die App läuft danach unter [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+- `/` – Bild-Aufwertung (Skalen & Werte)
+- `/cover` – der bisherige Podcast-Cover-Generator
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Deployment mit Coolify
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+Das Repository enthält ein `Dockerfile` und eine `docker-compose.yml`.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+1. In Coolify eine neue Resource vom Typ **Docker Compose** (oder
+   **Dockerfile**) anlegen und auf dieses Repository zeigen lassen.
+2. Als Branch `claude/image-upscale-ocr-61luz` (bzw. nach dem Merge `main`)
+   wählen.
+3. Der Container baut mit `npm run build` und startet mit `npm run start` auf
+   Port `3000`. Coolify übernimmt Reverse-Proxy und TLS.
 
-## Learn More
+Lokaler Test des Containers:
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```bash
+docker compose up --build
+```
