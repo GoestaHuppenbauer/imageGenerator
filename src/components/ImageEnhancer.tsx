@@ -4,7 +4,7 @@ import {
   DEFAULT_OPTIONS,
   EnhanceOptions,
   enhanceImage,
-  loadOpenCv,
+  prepareEnhancer,
 } from "@/lib/imageProcessing";
 
 interface ResultState {
@@ -32,10 +32,8 @@ export default function ImageEnhancer() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Warm up OpenCV.js in the background so the first run feels fast.
-    loadOpenCv().catch(() => {
-      /* surfaced later when the user starts processing */
-    });
+    // Warm up the worker (and OpenCV.js inside it) ahead of time.
+    prepareEnhancer();
   }, []);
 
   useEffect(() => {
@@ -43,6 +41,12 @@ export default function ImageEnhancer() {
       if (originalUrl) URL.revokeObjectURL(originalUrl);
     };
   }, [originalUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (result) URL.revokeObjectURL(result.url);
+    };
+  }, [result]);
 
   const update = (patch: Partial<EnhanceOptions>) =>
     setOptions((prev) => ({ ...prev, ...patch }));
@@ -98,8 +102,19 @@ export default function ImageEnhancer() {
         setStatus(message);
         if (typeof p === "number") setProgress(p);
       });
+      const blob: Blob = await new Promise((resolve, reject) => {
+        res.canvas.toBlob(
+          (b) =>
+            b
+              ? resolve(b)
+              : reject(
+                  new Error("Das Ergebnis-Bild konnte nicht erzeugt werden.")
+                ),
+          "image/png"
+        );
+      });
       setResult({
-        url: res.canvas.toDataURL("image/png"),
+        url: URL.createObjectURL(blob),
         width: res.canvas.width,
         height: res.canvas.height,
         notes: res.notes,
@@ -411,8 +426,14 @@ export default function ImageEnhancer() {
                 {busy && (
                   <div className={styles.progressTrack}>
                     <div
-                      className={styles.progressFill}
-                      style={{ width: `${Math.round(progress * 100)}%` }}
+                      className={`${styles.progressFill} ${
+                        progress > 0 ? "" : styles.indeterminate
+                      }`}
+                      style={
+                        progress > 0
+                          ? { width: `${Math.round(progress * 100)}%` }
+                          : undefined
+                      }
                     />
                   </div>
                 )}
