@@ -135,6 +135,8 @@ export default function ImageEnhancer() {
   };
 
   const isReconstruct = options.mode === "reconstruct";
+  const isPoints = options.mode === "points";
+  const isCleanup = options.mode === "cleanup";
 
   return (
     <div className={styles.page}>
@@ -198,7 +200,20 @@ export default function ImageEnhancer() {
             <div className={styles.modeToggle}>
               <button
                 className={`${styles.modeBtn} ${
-                  !isReconstruct ? styles.modeBtnActive : ""
+                  isPoints ? styles.modeBtnActive : ""
+                }`}
+                onClick={() => update({ mode: "points" })}
+                disabled={busy}
+              >
+                <div className={styles.modeBtnTitle}>Punkte</div>
+                <div className={styles.modeBtnDesc}>
+                  Nur die Messpunkte erkennen und sauber neu zeichnen – Größe
+                  und Intensität einstellbar.
+                </div>
+              </button>
+              <button
+                className={`${styles.modeBtn} ${
+                  isCleanup ? styles.modeBtnActive : ""
                 }`}
                 onClick={() => update({ mode: "cleanup" })}
                 disabled={busy}
@@ -242,22 +257,24 @@ export default function ImageEnhancer() {
                 </select>
               </div>
 
-              <div className={styles.field}>
-                <label className={styles.label}>Binarisierung</label>
-                <select
-                  className={styles.select}
-                  value={options.method}
-                  onChange={(e) =>
-                    update({
-                      method: e.target.value as EnhanceOptions["method"],
-                    })
-                  }
-                  disabled={busy}
-                >
-                  <option value="adaptive">Adaptiv (Foto)</option>
-                  <option value="otsu">Otsu (sauberer Scan)</option>
-                </select>
-              </div>
+              {!isPoints && (
+                <div className={styles.field}>
+                  <label className={styles.label}>Binarisierung</label>
+                  <select
+                    className={styles.select}
+                    value={options.method}
+                    onChange={(e) =>
+                      update({
+                        method: e.target.value as EnhanceOptions["method"],
+                      })
+                    }
+                    disabled={busy}
+                  >
+                    <option value="adaptive">Adaptiv (Foto)</option>
+                    <option value="otsu">Otsu (sauberer Scan)</option>
+                  </select>
+                </div>
+              )}
 
               <div className={styles.field}>
                 <label className={styles.label}>&nbsp;</label>
@@ -293,6 +310,73 @@ export default function ImageEnhancer() {
                     disabled={busy}
                   />
                 </div>
+              )}
+
+              {isPoints && (
+                <>
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Punktgröße{" "}
+                      <span className={styles.value}>
+                        {options.pointSize} px
+                      </span>
+                    </label>
+                    <input
+                      className={styles.range}
+                      type="range"
+                      min={1}
+                      max={12}
+                      step={1}
+                      value={options.pointSize}
+                      onChange={(e) =>
+                        update({ pointSize: Number(e.target.value) })
+                      }
+                      disabled={busy}
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Intensität{" "}
+                      <span className={styles.value}>
+                        {options.pointIntensity} %
+                      </span>
+                    </label>
+                    <input
+                      className={styles.range}
+                      type="range"
+                      min={10}
+                      max={100}
+                      step={5}
+                      value={options.pointIntensity}
+                      onChange={(e) =>
+                        update({ pointIntensity: Number(e.target.value) })
+                      }
+                      disabled={busy}
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Erkennungs-Schwelle{" "}
+                      <span className={styles.value}>
+                        {options.pointThreshold}
+                      </span>
+                    </label>
+                    <input
+                      className={styles.range}
+                      type="range"
+                      min={2}
+                      max={25}
+                      step={1}
+                      value={options.pointThreshold}
+                      onChange={(e) =>
+                        update({ pointThreshold: Number(e.target.value) })
+                      }
+                      disabled={busy}
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -335,28 +419,55 @@ export default function ImageEnhancer() {
                     onChange={(e) =>
                       update({ blockSize: Number(e.target.value) })
                     }
-                    disabled={busy || options.method !== "adaptive"}
+                    disabled={
+                      busy || (!isPoints && options.method !== "adaptive")
+                    }
                   />
                 </div>
 
-                <div className={styles.field}>
-                  <label className={styles.label}>
-                    Schwellenwert{" "}
-                    <span className={styles.value}>{options.threshold}</span>
-                  </label>
-                  <input
-                    className={styles.range}
-                    type="range"
-                    min={1}
-                    max={25}
-                    step={1}
-                    value={options.threshold}
-                    onChange={(e) =>
-                      update({ threshold: Number(e.target.value) })
-                    }
-                    disabled={busy || options.method !== "adaptive"}
-                  />
-                </div>
+                {!isPoints && (
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Schwellenwert{" "}
+                      <span className={styles.value}>{options.threshold}</span>
+                    </label>
+                    <input
+                      className={styles.range}
+                      type="range"
+                      min={1}
+                      max={25}
+                      step={1}
+                      value={options.threshold}
+                      onChange={(e) =>
+                        update({ threshold: Number(e.target.value) })
+                      }
+                      disabled={busy || options.method !== "adaptive"}
+                    />
+                  </div>
+                )}
+
+                {isPoints && (
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Max. Punktgröße{" "}
+                      <span className={styles.value}>
+                        {options.pointMaxSize} px
+                      </span>
+                    </label>
+                    <input
+                      className={styles.range}
+                      type="range"
+                      min={3}
+                      max={40}
+                      step={1}
+                      value={options.pointMaxSize}
+                      onChange={(e) =>
+                        update({ pointMaxSize: Number(e.target.value) })
+                      }
+                      disabled={busy}
+                    />
+                  </div>
+                )}
 
                 {isReconstruct && (
                   <div className={styles.field}>

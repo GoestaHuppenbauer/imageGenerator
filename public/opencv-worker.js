@@ -262,6 +262,38 @@ function detectLinesFromMask(cv, mask, opts) {
   };
 }
 
+// Connected-component detection of small blobs (data points). Long grid
+// lines must already be removed; blobs larger than maxSize (bounding box)
+// are treated as text and skipped.
+function detectPoints(cv, mask, maxSize) {
+  var labels = new cv.Mat();
+  var stats = new cv.Mat();
+  var centroids = new cv.Mat();
+  var count = cv.connectedComponentsWithStats(
+    mask,
+    labels,
+    stats,
+    centroids,
+    8,
+    cv.CV_32S
+  );
+  var points = [];
+  for (var i = 1; i < count; i++) {
+    var w = stats.intAt(i, 2); // CC_STAT_WIDTH
+    var h = stats.intAt(i, 3); // CC_STAT_HEIGHT
+    if (Math.max(w, h) <= maxSize) {
+      points.push({
+        x: centroids.doubleAt(i, 0),
+        y: centroids.doubleAt(i, 1),
+      });
+    }
+  }
+  labels.delete();
+  stats.delete();
+  centroids.delete();
+  return points;
+}
+
 async function handleProcess(msg) {
   var id = msg.id;
   function status(message) {
@@ -304,10 +336,47 @@ async function handleProcess(msg) {
   }
 
   status("Schwarz-Weiß-Wandlung …");
-  var bin = binarize(cv, gray, opts);
+  var binOpts = opts;
+  if (opts.mode === "points") {
+    binOpts = {
+      method: "adaptive",
+      blockSize: opts.blockSize,
+      threshold: opts.pointThreshold,
+      denoise: opts.denoise,
+    };
+  }
+  var bin = binarize(cv, gray, binOpts);
   gray.delete();
+  var workWidth = bin.cols;
+  var workHeight = bin.rows;
 
-  if (opts.mode === "reconstruct") {
+  if (opts.mode === "points") {
+    status("Messpunkte werden erkannt …");
+    var invPoints = new cv.Mat();
+    cv.bitwise_not(bin, invPoints);
+    bin.delete();
+    var gridPoints = extractGrid(cv, invPoints);
+    var pointsOnly = new cv.Mat();
+    cv.subtract(invPoints, gridPoints, pointsOnly);
+    gridPoints.delete();
+    invPoints.delete();
+    var detectedPoints = detectPoints(
+      cv,
+      pointsOnly,
+      Math.max(2, Math.round(opts.pointMaxSize))
+    );
+    pointsOnly.delete();
+    notes.push(detectedPoints.length + " Messpunkte erkannt.");
+    self.postMessage({
+      type: "result",
+      id: id,
+      mode: "points",
+      points: detectedPoints,
+      width: workWidth,
+      height: workHeight,
+      notes: notes,
+    });
+  } else if (opts.mode === "reconstruct") {
     status("Gitterlinien werden getrennt …");
     var inv = new cv.Mat();
     cv.bitwise_not(bin, inv); // ink = 255

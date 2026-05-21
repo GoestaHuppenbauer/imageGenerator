@@ -6,7 +6,7 @@ const WORKER_URL = "/opencv-worker.js";
 const WORKING_MAX = 1600; // longest side used for analysis
 const OUTPUT_MAX = 5200; // hard cap for the rendered result
 
-export type EnhanceMode = "cleanup" | "reconstruct";
+export type EnhanceMode = "cleanup" | "reconstruct" | "points";
 
 export interface EnhanceOptions {
   mode: EnhanceMode;
@@ -18,10 +18,14 @@ export interface EnhanceOptions {
   deskew: boolean;
   lineThickness: number; // reconstruct: stroke width in output pixels
   minLineLength: number; // reconstruct: shortest line segment to keep
+  pointSize: number; // points: redrawn dot radius in output pixels
+  pointIntensity: number; // points: dot darkness 10..100 %
+  pointThreshold: number; // points: binarization constant (lower = more dots)
+  pointMaxSize: number; // points: largest blob that still counts as a point
 }
 
 export const DEFAULT_OPTIONS: EnhanceOptions = {
-  mode: "cleanup",
+  mode: "points",
   upscale: 2,
   method: "adaptive",
   blockSize: 35,
@@ -30,6 +34,10 @@ export const DEFAULT_OPTIONS: EnhanceOptions = {
   deskew: true,
   lineThickness: 3,
   minLineLength: 40,
+  pointSize: 3,
+  pointIntensity: 100,
+  pointThreshold: 10,
+  pointMaxSize: 12,
 };
 
 export interface EnhanceResult {
@@ -203,6 +211,35 @@ function renderReconstruct(
   return canvas;
 }
 
+// Points render: draw every detected data point as a uniform filled dot of
+// the chosen size and intensity on a clean white background.
+function renderPoints(
+  workWidth: number,
+  workHeight: number,
+  upscale: number,
+  points: { x: number; y: number }[],
+  opts: EnhanceOptions
+): HTMLCanvasElement {
+  const width = Math.round(workWidth * upscale);
+  const height = Math.round(workHeight * upscale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  const alpha = Math.max(0.05, Math.min(1, opts.pointIntensity / 100));
+  const radius = Math.max(0.5, opts.pointSize);
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  for (const p of points) {
+    ctx.beginPath();
+    ctx.arc(p.x * upscale, p.y * upscale, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas;
+}
+
 // --- main entry point ---------------------------------------------------------
 
 export async function enhanceImage(
@@ -246,6 +283,19 @@ export async function enhanceImage(
   if (workerResult.mode === "cleanup") {
     onStatus("Fertig.", 1);
     return { canvas: imageBufferToCanvas(workerResult.image), notes: allNotes };
+  }
+
+  if (workerResult.mode === "points") {
+    onStatus("Punkte werden gezeichnet …");
+    const canvas = renderPoints(
+      workerResult.width,
+      workerResult.height,
+      upscale,
+      workerResult.points,
+      opts
+    );
+    onStatus("Fertig.", 1);
+    return { canvas, notes: allNotes };
   }
 
   onStatus("Bild wird neu gezeichnet …");
