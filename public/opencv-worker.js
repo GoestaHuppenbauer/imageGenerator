@@ -5,8 +5,12 @@
 var OPENCV_URL = "https://docs.opencv.org/4.x/opencv.js";
 var SNAP_TOL = 6;
 
+var cvInstance = null;
 var cvReady = null;
 
+// OpenCV.js 4.x exposes `cv` as a "thenable" object whose then() is not a
+// real promise. Avoid then()/catch() entirely and just poll until the
+// runtime is ready (cv.Mat becomes available).
 function ensureCv() {
   if (cvReady) return cvReady;
   cvReady = new Promise(function (resolve, reject) {
@@ -16,31 +20,18 @@ function ensureCv() {
       reject(new Error("OpenCV.js konnte nicht geladen werden."));
       return;
     }
-    var cv = self.cv;
-    if (cv && typeof cv.then === "function") {
-      cv.then(resolve).catch(reject);
-      return;
-    }
-    if (cv && cv.Mat) {
-      resolve(cv);
-      return;
-    }
     var started = Date.now();
     var timer = setInterval(function () {
-      if (self.cv && self.cv.Mat) {
+      var c = self.cv;
+      if (c && typeof c.Mat === "function") {
         clearInterval(timer);
-        resolve(self.cv);
+        cvInstance = c;
+        resolve();
       } else if (Date.now() - started > 120000) {
         clearInterval(timer);
-        reject(new Error("OpenCV.js Zeitüberschreitung."));
+        reject(new Error("OpenCV.js Zeitüberschreitung beim Initialisieren."));
       }
     }, 50);
-    if (self.cv && typeof self.cv === "object") {
-      self.cv.onRuntimeInitialized = function () {
-        clearInterval(timer);
-        resolve(self.cv);
-      };
-    }
   });
   return cvReady;
 }
@@ -259,7 +250,8 @@ async function handleProcess(msg) {
   }
 
   status("Bildbibliothek wird geladen …");
-  var cv = await ensureCv();
+  await ensureCv();
+  var cv = cvInstance;
   var opts = msg.options;
   var upscale = msg.upscale;
   var notes = [];
