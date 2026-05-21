@@ -10,22 +10,24 @@ Bild wird nicht an einen Server gesendet.
 ## Funktionen
 
 - **Cleanup** – Schräglage korrigieren, entrauschen, sauberes Schwarz/Weiß
-  (adaptiv oder Otsu) und hochskalieren. Die Originalpixel bleiben erhalten,
-  Zahlenwerte werden nicht verändert.
-- **Reconstruct** – Linien per Hough-Transformation erkennen, waagerechte/
-  senkrechte Linien begradigen und das Bild vektorartig neu zeichnen.
-  Text wird per OCR erkannt und scharf neu gesetzt.
+  (adaptiv oder Otsu) und hochskalieren. Alles bleibt erhalten – Messpunkte,
+  Linien und Text.
+- **Reconstruct** – Gitterlinien werden per Morphologie vom Rest getrennt und
+  als gerade Linien neu gezeichnet. Messpunkte und Text bleiben dabei als
+  scharfe Pixel erhalten.
 - Vorschau Original/Ergebnis nebeneinander, Download als PNG.
+
+Die schwere Bildverarbeitung läuft in einem Web Worker, damit die Oberfläche
+flüssig bleibt.
 
 ## Technik
 
 - [Next.js](https://nextjs.org/) (Pages Router, TypeScript)
-- [OpenCV.js](https://docs.opencv.org/) für Bildverarbeitung
-- [Tesseract.js](https://tesseract.projectnaptha.com/) für OCR
+- [OpenCV.js](https://docs.opencv.org/) für Bildverarbeitung (im Web Worker)
 
-OpenCV.js und Tesseract.js (inkl. OCR-Sprachdaten) werden zur Laufzeit einmalig
-von einem CDN nachgeladen. Der Browser des Nutzers benötigt dafür eine
-Internetverbindung; die Bilddaten selbst verlassen den Browser nicht.
+OpenCV.js wird zur Laufzeit einmalig von einem CDN nachgeladen. Der Browser des
+Nutzers benötigt dafür eine Internetverbindung; die Bilddaten selbst verlassen
+den Browser nicht.
 
 ## Entwicklung
 

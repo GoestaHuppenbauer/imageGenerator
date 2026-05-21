@@ -205,7 +205,8 @@ export default function ImageEnhancer() {
               >
                 <div className={styles.modeBtnTitle}>Cleanup</div>
                 <div className={styles.modeBtnDesc}>
-                  Entzerren, säubern, schärfen. Originalpixel bleiben erhalten.
+                  Entzerren, säubern, schärfen. Alles bleibt erhalten – Punkte,
+                  Linien, Text.
                 </div>
               </button>
               <button
@@ -217,7 +218,8 @@ export default function ImageEnhancer() {
               >
                 <div className={styles.modeBtnTitle}>Reconstruct</div>
                 <div className={styles.modeBtnDesc}>
-                  Linien &amp; Text erkennen und vektorartig neu zeichnen.
+                  Gitterlinien sauber neu zeichnen. Messpunkte &amp; Text bleiben
+                  erhalten.
                 </div>
               </button>
             </div>
@@ -271,55 +273,26 @@ export default function ImageEnhancer() {
               </div>
 
               {isReconstruct && (
-                <>
-                  <div className={styles.field}>
-                    <label className={styles.label}>
-                      Linienstärke{" "}
-                      <span className={styles.value}>
-                        {options.lineThickness} px
-                      </span>
-                    </label>
-                    <input
-                      className={styles.range}
-                      type="range"
-                      min={1}
-                      max={8}
-                      step={1}
-                      value={options.lineThickness}
-                      onChange={(e) =>
-                        update({ lineThickness: Number(e.target.value) })
-                      }
-                      disabled={busy}
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label}>&nbsp;</label>
-                    <label className={styles.checkboxRow}>
-                      <input
-                        type="checkbox"
-                        checked={options.ocr}
-                        onChange={(e) => update({ ocr: e.target.checked })}
-                        disabled={busy}
-                      />
-                      Text erkennen (OCR)
-                    </label>
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label}>OCR-Sprache</label>
-                    <select
-                      className={styles.select}
-                      value={options.ocrLang}
-                      onChange={(e) => update({ ocrLang: e.target.value })}
-                      disabled={busy || !options.ocr}
-                    >
-                      <option value="deu+eng">Deutsch + Englisch</option>
-                      <option value="deu">Deutsch</option>
-                      <option value="eng">Englisch</option>
-                    </select>
-                  </div>
-                </>
+                <div className={styles.field}>
+                  <label className={styles.label}>
+                    Linienstärke{" "}
+                    <span className={styles.value}>
+                      {options.lineThickness} px
+                    </span>
+                  </label>
+                  <input
+                    className={styles.range}
+                    type="range"
+                    min={1}
+                    max={8}
+                    step={1}
+                    value={options.lineThickness}
+                    onChange={(e) =>
+                      update({ lineThickness: Number(e.target.value) })
+                    }
+                    disabled={busy}
+                  />
+                </div>
               )}
             </div>
 
@@ -507,8 +480,8 @@ export default function ImageEnhancer() {
 
         <p className={styles.footer}>
           Dein Bild wird nicht hochgeladen – die gesamte Verarbeitung passiert
-          lokal im Browser. Die Bibliotheken OpenCV.js und Tesseract.js werden
-          dafür einmalig von einem CDN nachgeladen.
+          lokal im Browser. Die Bibliothek OpenCV.js wird dafür einmalig von
+          einem CDN nachgeladen.
         </p>
       </div>
     </div>

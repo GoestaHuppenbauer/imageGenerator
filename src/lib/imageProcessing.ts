@@ -1,9 +1,6 @@
 // Client-side image enhancement for scanned / photographed charts and scales.
 // Heavy OpenCV work runs in a Web Worker (public/opencv-worker.js) so the page
-// stays responsive. OCR uses Tesseract.js, which runs in its own worker too.
-
-export const TESSERACT_URL =
-  "https://cdn.jsdelivr.net/npm/tesseract.js@4.1.4/dist/tesseract.min.js";
+// stays responsive.
 
 const WORKER_URL = "/opencv-worker.js";
 const WORKING_MAX = 1600; // longest side used for analysis
@@ -19,8 +16,6 @@ export interface EnhanceOptions {
   threshold: number; // adaptive threshold constant C
   denoise: number; // 0..3
   deskew: boolean;
-  ocr: boolean;
-  ocrLang: string;
   lineThickness: number; // reconstruct: stroke width in output pixels
   minLineLength: number; // reconstruct: shortest line segment to keep
 }
@@ -30,11 +25,9 @@ export const DEFAULT_OPTIONS: EnhanceOptions = {
   upscale: 2,
   method: "adaptive",
   blockSize: 35,
-  threshold: 12,
+  threshold: 10,
   denoise: 1,
   deskew: true,
-  ocr: true,
-  ocrLang: "deu+eng",
   lineThickness: 3,
   minLineLength: 40,
 };
@@ -62,18 +55,6 @@ interface DetectedLines {
   horizontals: AxisLine[];
   verticals: AxisLine[];
   diagonals: { x1: number; y1: number; x2: number; y2: number }[];
-}
-
-interface OcrWord {
-  text: string;
-  confidence: number;
-  bbox: { x0: number; y0: number; x1: number; y1: number };
-}
-
-declare global {
-  interface Window {
-    Tesseract?: any;
-  }
 }
 
 // --- worker management --------------------------------------------------------
@@ -135,49 +116,6 @@ export function prepareEnhancer(): void {
   }
 }
 
-// --- Tesseract loading --------------------------------------------------------
-
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const selector = `script[data-lib-src="${src}"]`;
-    const existing = document.querySelector<HTMLScriptElement>(selector);
-    if (existing) {
-      if (existing.dataset.loaded === "true") return resolve();
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Skript konnte nicht geladen werden: " + src))
-      );
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.dataset.libSrc = src;
-    script.addEventListener("load", () => {
-      script.dataset.loaded = "true";
-      resolve();
-    });
-    script.addEventListener("error", () =>
-      reject(new Error("Skript konnte nicht geladen werden: " + src))
-    );
-    document.head.appendChild(script);
-  });
-}
-
-let tesseractPromise: Promise<any> | null = null;
-
-function loadTesseract(): Promise<any> {
-  if (tesseractPromise) return tesseractPromise;
-  tesseractPromise = (async () => {
-    await loadScript(TESSERACT_URL);
-    if (!window.Tesseract) {
-      throw new Error("Tesseract.js konnte nicht geladen werden.");
-    }
-    return window.Tesseract;
-  })();
-  return tesseractPromise;
-}
-
 // --- helpers ------------------------------------------------------------------
 
 function makeWorkingCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
@@ -214,49 +152,33 @@ function imageBufferToCanvas(img: ImageBuffer): HTMLCanvasElement {
   return canvas;
 }
 
-async function runOcr(
-  canvas: HTMLCanvasElement,
-  lang: string,
-  onProgress: (progress: number) => void
-): Promise<OcrWord[]> {
-  const Tesseract = await loadTesseract();
-  const { data } = await Tesseract.recognize(canvas, lang, {
-    logger: (m: any) => {
-      if (m.status === "recognizing text" && typeof m.progress === "number") {
-        onProgress(m.progress);
-      }
-    },
-  });
-  const words: OcrWord[] = data && data.words ? data.words : [];
-  return words
-    .filter((w) => w.text && w.text.trim() && w.confidence >= 45)
-    .map((w) => ({
-      text: w.text.trim(),
-      confidence: w.confidence,
-      bbox: w.bbox,
-    }));
-}
-
+// Reconstruct render: scale up the preserved points/text layer, then draw the
+// freshly detected grid lines crisply on top.
 function renderReconstruct(
-  workWidth: number,
-  workHeight: number,
+  pointsCanvas: HTMLCanvasElement,
   upscale: number,
   detected: DetectedLines,
-  words: OcrWord[],
   opts: EnhanceOptions
 ): HTMLCanvasElement {
-  const width = Math.round(workWidth * upscale);
-  const height = Math.round(workHeight * upscale);
+  const width = Math.round(pointsCanvas.width * upscale);
+  const height = Math.round(pointsCanvas.height * upscale);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
+
+  // Preserved data points + text (every pixel that is not a grid line).
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(pointsCanvas, 0, 0, width, height);
+
+  // Freshly drawn grid lines.
   ctx.strokeStyle = "#000000";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-
   const thickness = Math.max(1, opts.lineThickness);
   ctx.lineWidth = thickness;
   for (const h of detected.horizontals) {
@@ -277,20 +199,6 @@ function renderReconstruct(
     ctx.moveTo(d.x1 * upscale, d.y1 * upscale);
     ctx.lineTo(d.x2 * upscale, d.y2 * upscale);
     ctx.stroke();
-  }
-
-  if (words.length) {
-    ctx.fillStyle = "#000000";
-    ctx.textBaseline = "alphabetic";
-    for (const word of words) {
-      const boxWidth = Math.max(1, word.bbox.x1 - word.bbox.x0);
-      const boxHeight = Math.max(1, word.bbox.y1 - word.bbox.y0);
-      const fontSize = Math.max(7, boxHeight * 0.92 * upscale);
-      ctx.font = `${fontSize}px Arial, "Helvetica Neue", sans-serif`;
-      const x = word.bbox.x0 * upscale;
-      const y = word.bbox.y1 * upscale - boxHeight * 0.14 * upscale;
-      ctx.fillText(word.text, x, y, boxWidth * upscale * 1.08);
-    }
   }
   return canvas;
 }
@@ -340,29 +248,12 @@ export async function enhanceImage(
     return { canvas: imageBufferToCanvas(workerResult.image), notes: allNotes };
   }
 
-  const binaryCanvas = imageBufferToCanvas(workerResult.binary);
-  let words: OcrWord[] = [];
-  if (opts.ocr) {
-    onStatus("Text wird erkannt … 0 %");
-    try {
-      words = await runOcr(binaryCanvas, opts.ocrLang, (progress) =>
-        onStatus(`Text wird erkannt … ${Math.round(progress * 100)} %`, progress)
-      );
-      allNotes.push(`${words.length} Textfragmente erkannt und neu gesetzt.`);
-    } catch {
-      allNotes.push(
-        "Texterkennung übersprungen – die OCR-Daten konnten nicht geladen werden (Netzwerk?)."
-      );
-    }
-  }
-
   onStatus("Bild wird neu gezeichnet …");
+  const pointsCanvas = imageBufferToCanvas(workerResult.points);
   const canvas = renderReconstruct(
-    workerResult.binary.width,
-    workerResult.binary.height,
+    pointsCanvas,
     upscale,
     workerResult.lines,
-    words,
     opts
   );
   onStatus("Fertig.", 1);

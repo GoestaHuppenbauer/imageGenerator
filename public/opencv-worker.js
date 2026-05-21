@@ -199,12 +199,32 @@ function mergeAxisLines(items, posGap, joinGap) {
   return merged;
 }
 
-function detectLines(cv, bin, opts) {
-  var inverted = new cv.Mat();
-  cv.bitwise_not(bin, inverted);
+// Extract long straight strokes (grid + axes) from an ink=255 mask using
+// morphological opening with long horizontal and vertical kernels. Small
+// blobs such as data points and short text strokes do not survive.
+function extractGrid(cv, inv) {
+  var maxDim = Math.max(inv.cols, inv.rows);
+  var len = Math.min(40, Math.max(15, Math.round(maxDim / 25)));
+  var hKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(len, 1));
+  var vKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, len));
+  var horizontal = new cv.Mat();
+  var vertical = new cv.Mat();
+  cv.morphologyEx(inv, horizontal, cv.MORPH_OPEN, hKernel);
+  cv.morphologyEx(inv, vertical, cv.MORPH_OPEN, vKernel);
+  var grid = new cv.Mat();
+  cv.bitwise_or(horizontal, vertical, grid);
+  hKernel.delete();
+  vKernel.delete();
+  horizontal.delete();
+  vertical.delete();
+  return grid;
+}
+
+// Hough line detection directly on an ink=255 line mask.
+function detectLinesFromMask(cv, mask, opts) {
   var lines = new cv.Mat();
-  var minLen = Math.max(15, opts.minLineLength);
-  cv.HoughLinesP(inverted, lines, 1, Math.PI / 180, 50, minLen, 12);
+  var minLen = Math.max(20, opts.minLineLength);
+  cv.HoughLinesP(mask, lines, 1, Math.PI / 180, 30, minLen, 25);
 
   var horizontals = [];
   var verticals = [];
@@ -232,13 +252,12 @@ function detectLines(cv, bin, opts) {
       diagonals.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
     }
   }
-  inverted.delete();
   lines.delete();
 
-  var joinGap = Math.max(20, minLen * 0.6);
+  var joinGap = Math.max(20, minLen * 0.5);
   return {
-    horizontals: mergeAxisLines(horizontals, 5, joinGap),
-    verticals: mergeAxisLines(verticals, 5, joinGap),
+    horizontals: mergeAxisLines(horizontals, 6, joinGap),
+    verticals: mergeAxisLines(verticals, 6, joinGap),
     diagonals: diagonals,
   };
 }
@@ -289,32 +308,47 @@ async function handleProcess(msg) {
   gray.delete();
 
   if (opts.mode === "reconstruct") {
-    status("Linien werden erkannt …");
-    var detected = detectLines(cv, bin, opts);
+    status("Gitterlinien werden getrennt …");
+    var inv = new cv.Mat();
+    cv.bitwise_not(bin, inv); // ink = 255
+    bin.delete();
+
+    var grid = extractGrid(cv, inv);
+    var detected = detectLinesFromMask(cv, grid, opts);
     notes.push(
       detected.horizontals.length +
-        " waagerechte, " +
+        " waagerechte und " +
         detected.verticals.length +
-        " senkrechte und " +
-        detected.diagonals.length +
-        " schräge Linien erkannt."
+        " senkrechte Linien neu gezeichnet."
     );
-    var binImageData = matToImageData(cv, bin);
-    bin.delete();
+
+    // Everything that is not a grid line: data points, text, ticks, arrows.
+    var pointsMask = new cv.Mat();
+    cv.subtract(inv, grid, pointsMask);
+    grid.delete();
+    inv.delete();
+
+    var pointsDisplay = new cv.Mat();
+    cv.bitwise_not(pointsMask, pointsDisplay); // black ink on white
+    pointsMask.delete();
+    notes.push("Messpunkte und Text wurden erhalten.");
+
+    var pointsImageData = matToImageData(cv, pointsDisplay);
+    pointsDisplay.delete();
     self.postMessage(
       {
         type: "result",
         id: id,
         mode: "reconstruct",
-        binary: {
-          buffer: binImageData.data.buffer,
-          width: binImageData.width,
-          height: binImageData.height,
+        points: {
+          buffer: pointsImageData.data.buffer,
+          width: pointsImageData.width,
+          height: pointsImageData.height,
         },
         lines: detected,
         notes: notes,
       },
-      [binImageData.data.buffer]
+      [pointsImageData.data.buffer]
     );
   } else {
     status("Bild wird hochskaliert …");
